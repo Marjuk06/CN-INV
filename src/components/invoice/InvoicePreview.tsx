@@ -101,19 +101,19 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({
       </div>
 
       {/* Invoice Canvas Container */}
-      <div className="flex-1 overflow-auto bg-slate-100/70 dark:bg-slate-950/70 p-4 sm:p-8 flex justify-center items-start">
+      <div className="flex-1 overflow-auto bg-slate-100/70 dark:bg-slate-950/70 p-4 sm:p-8 flex justify-center items-start print:p-0 print:!bg-transparent print:overflow-visible print:!border-none">
         <div
           style={{
             transform: `scale(${zoom / 100})`,
             transformOrigin: 'top center',
             transition: 'transform 0.15s ease-out',
           }}
-          className="w-full max-w-[794px] transition-all"
+          className="w-full max-w-[794px] transition-all print:!transform-none print:max-w-none print:w-full print:!border-none"
         >
           {/* Print Root Target */}
           <div
             id="invoice-print-area"
-            className="print-page bg-white shadow-xl rounded-sm overflow-hidden border border-slate-200/80 print:border-0 print:shadow-none print:m-0"
+            className="print-page bg-white shadow-xl rounded-sm overflow-hidden border border-slate-200/80 print:!border-none print:!shadow-none print:!m-0 print:!p-0 print:!rounded-none"
           >
             {currentTemplate}
           </div>

@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import { jsPDF } from 'jspdf'
 
 export interface PDFExportOptions {
@@ -19,57 +19,61 @@ export async function generateInvoicePDF({
 
   onProgress?.(10)
 
-  // Temporarily ensure background colors and images are rendered clearly
-  const canvas = await html2canvas(element, {
-    scale: 2, // High resolution for crisp printing & sharp text
-    useCORS: true,
-    logging: false,
-    allowTaint: true,
+  // Use html-to-image to bypass html2canvas oklch parsing bugs
+  // We force a specific width to ensure consistent A4 scaling
+  const dataUrl = await toPng(element, {
+    quality: 1.0,
+    pixelRatio: 2,
     backgroundColor: '#ffffff',
-    windowWidth: 1100, // Fixed rendering width ensuring desktop A4 layout
-    onclone: (clonedDoc) => {
-      const clonedEl = clonedDoc.getElementById(elementId)
-      if (clonedEl) {
-        clonedEl.style.width = '794px' // Standard 96 DPI A4 width in px
-        clonedEl.style.margin = '0 auto'
-        clonedEl.style.boxShadow = 'none'
-        clonedEl.style.border = 'none'
-      }
+    style: {
+      width: '794px', // Force desktop A4 width
+      margin: '0',
+      boxShadow: 'none',
+      border: 'none',
     },
   })
 
   onProgress?.(60)
 
-  const imgData = canvas.toDataURL('image/png')
-  
   // Standard A4 dimensions in millimeters
   const pdfWidth = 210
   const pdfHeight = 297
-  const imgWidth = pdfWidth
-  const imgHeight = (canvas.height * pdfWidth) / canvas.width
+  
+  const imgElement = new Image()
+  imgElement.src = dataUrl
+  await new Promise((resolve) => { imgElement.onload = resolve })
+  
+  let imgWidth = pdfWidth
+  let imgHeight = (imgElement.height * pdfWidth) / imgElement.width
 
-  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  })
 
-  let heightLeft = imgHeight
-  let position = 0
-  let page = 1
+  // If the rendered height is within single page bounds (with slight tolerance), fit on 1 page
+  if (imgHeight <= pdfHeight + 10) {
+    const renderHeight = Math.min(imgHeight, pdfHeight)
+    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, renderHeight, undefined, 'FAST')
+  } else {
+    // True multi-page document: add pages cleanly at full A4 width
+    let position = 0
+    let remainingHeight = imgHeight
 
-  // First page
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST')
-  heightLeft -= pdfHeight
-
-  // Additional pages if needed
-  while (heightLeft > 0) {
-    position = -(page * pdfHeight)
-    pdf.addPage()
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST')
-    page++
-    heightLeft -= pdfHeight
+    while (remainingHeight > 0) {
+      if (position < 0) {
+        pdf.addPage()
+      }
+      pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST')
+      position -= pdfHeight
+      remainingHeight -= pdfHeight
+    }
   }
 
   onProgress?.(90)
 
-  // Ensure filename ends with .pdf
   const finalFilename = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`
   pdf.save(finalFilename)
 

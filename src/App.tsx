@@ -14,6 +14,7 @@ import { SettingsView } from './components/settings/SettingsView'
 import { PublicInvoiceView } from './components/public/PublicInvoiceView'
 import { ShareModal } from './components/invoice/ShareModal'
 import { generateInvoicePDF } from './services/pdfGenerator'
+import { printInvoice } from './services/printService'
 import { Customer, Invoice } from './types/invoice'
 
 const AppContent: React.FC = () => {
@@ -101,26 +102,14 @@ const AppContent: React.FC = () => {
     setActiveInvoice(dup)
   }
 
-  const handleDownloadPDF = async (inv: Invoice) => {
-    // If not in editor, temporarily mount/target or load into active
-    try {
-      setActiveInvoice(inv)
-      // Allow microtask tick for DOM mount
-      setTimeout(async () => {
-        try {
-          await generateInvoicePDF({
-            elementId: 'invoice-print-area',
-            filename: `Codenest-Invoice-${inv.invoiceNumber}.pdf`,
-          })
-          success(`PDF exported: Codenest-Invoice-${inv.invoiceNumber}.pdf`)
-        } catch (err) {
-          console.error(err)
-          error('Error rendering PDF. You can also print from the invoice editor.')
-        }
-      }, 300)
-    } catch (err) {
-      console.error(err)
-    }
+  const handleDownloadPDF = (inv: Invoice) => {
+    setActiveInvoice(inv)
+    setTimeout(() => {
+      printInvoice({
+        invoiceNumber: inv.invoiceNumber,
+        clientName: inv.customerSnapshot.name,
+      })
+    }, 200)
   }
 
   // Standalone Public Customer Invoice View
@@ -140,7 +129,7 @@ const AppContent: React.FC = () => {
   // Dedicated Invoice Editor with Live Split-Screen Preview
   if (activeInvoice) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className="h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 print:!bg-white print:!bg-none print:!min-h-0 print:!h-auto print:!p-0 print:!m-0">
         <InvoiceEditor
           invoice={activeInvoice}
           onBack={() => {

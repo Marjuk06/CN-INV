@@ -15,6 +15,7 @@ import { InvoicePreview } from './InvoicePreview'
 import { ShareModal } from './ShareModal'
 import { PaymentRecordModal } from './PaymentRecordModal'
 import { generateInvoicePDF } from '../../services/pdfGenerator'
+import { printInvoice } from '../../services/printService'
 import { formatCurrency } from '../../services/currency'
 import {
   ArrowLeft,
@@ -41,6 +42,8 @@ interface InvoiceEditorProps {
 export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoice, onBack }) => {
   const {
     updateInvoice,
+    company,
+    paymentSettings,
     customers,
     services,
     addCustomer,
@@ -129,25 +132,29 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoice, onBack })
     setQuickCustAddress('')
   }
 
-  const handleDownloadPDF = async () => {
-    try {
-      setIsExportingPDF(true)
-      const filename = `Codenest-Invoice-${invoice.invoiceNumber}.pdf`
-      await generateInvoicePDF({
-        elementId: 'invoice-print-area',
-        filename,
-      })
-      success(`PDF exported: ${filename}`)
-    } catch (err) {
-      console.error(err)
-      error('Failed to generate PDF. Please use the Print button as an alternative.')
-    } finally {
-      setIsExportingPDF(false)
-    }
+  const handleDownloadPDF = () => {
+    success('Destination: "Save as PDF" সিলেক্ট করে সেভ করুন।')
+    printInvoice({
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: invoice.customerSnapshot.name,
+    })
+  }
+
+  const handleSave = () => {
+    // Sync company profile and payment settings from the latest global settings
+    handleUpdate({
+      companySnapshot: { ...company },
+      paymentSnapshot: { ...paymentSettings },
+    })
+    success('Invoice saved successfully!')
+    onBack()
   }
 
   const handlePrint = () => {
-    window.print()
+    printInvoice({
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: invoice.customerSnapshot.name,
+    })
   }
 
   const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,7 +176,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoice, onBack })
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-screen print:!h-auto print:!min-h-0 print:!block print:!p-0 print:!m-0">
       {/* Top action header */}
       <div className="no-print bg-white/70 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3">
@@ -271,20 +278,30 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoice, onBack })
             type="button"
             disabled={isExportingPDF}
             onClick={handleDownloadPDF}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-sm shadow-sky-600/20 transition-all"
-            title="Download A4 PDF"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-medium rounded-lg transition-colors shadow-sm shadow-sky-500/20"
+            title="Download PDF"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>{isExportingPDF ? 'Generating...' : 'PDF'}</span>
+            <span className="hidden sm:inline">PDF</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-medium rounded-lg transition-colors shadow-sm shadow-slate-900/10 ml-2"
+            title="Save Invoice"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Save</span>
           </button>
         </div>
       </div>
 
       {/* Main Split-Screen Workspace */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden print:overflow-visible">
         {/* Left Side: Form Editor */}
         <div
-          className={`w-full lg:w-[52%] xl:w-[50%] h-full overflow-y-auto p-4 sm:p-6 space-y-6 ${
+          className={`w-full lg:w-[52%] xl:w-[50%] h-full overflow-y-auto p-4 sm:p-6 space-y-6 print:hidden ${
             mobileTab === 'preview' ? 'hidden lg:block' : 'block'
           }`}
         >
@@ -640,7 +657,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoice, onBack })
 
         {/* Right Side: Sticky Live Preview */}
         <div
-          className={`w-full lg:w-[48%] xl:w-[50%] h-full flex flex-col border-l border-slate-200 dark:border-slate-800 ${
+          className={`w-full lg:w-[48%] xl:w-[50%] h-full flex flex-col border-l border-slate-200 dark:border-slate-800 print:w-full print:!border-none print:!bg-transparent print:flex print:static print:h-auto print:overflow-visible ${
             mobileTab === 'edit' ? 'hidden lg:flex' : 'flex'
           }`}
         >

@@ -6,6 +6,7 @@ import { CodenestMinimal } from '../templates/CodenestMinimal'
 import { CodenestCorporate } from '../templates/CodenestCorporate'
 import { CodenestDarkAccent } from '../templates/CodenestDarkAccent'
 import { generateInvoicePDF } from '../../services/pdfGenerator'
+import { printInvoice } from '../../services/printService'
 import { Download, Printer, ShieldCheck, ArrowLeft } from 'lucide-react'
 
 interface PublicInvoiceViewProps {
@@ -42,23 +43,18 @@ export const PublicInvoiceView: React.FC<PublicInvoiceViewProps> = ({ invoice, o
     )
   }
 
-  const handleDownload = async () => {
-    try {
-      setIsExporting(true)
-      await generateInvoicePDF({
-        elementId: 'public-invoice-render',
-        filename: `Codenest-Invoice-${invoice.invoiceNumber}.pdf`,
-      })
-    } catch (err) {
-      console.error(err)
-      window.print()
-    } finally {
-      setIsExporting(false)
-    }
+  const handleDownload = () => {
+    printInvoice({
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: invoice.customerSnapshot.name,
+    })
   }
 
   const handlePrint = () => {
-    window.print()
+    printInvoice({
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: invoice.customerSnapshot.name,
+    })
   }
 
   const renderTemplate = () => {
